@@ -1,0 +1,43 @@
+---
+title: "Loesung"
+output: html_document
+date: "2025-09-05"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(rvest)
+library(httr)
+library(stringr)
+```
+
+Zuerst definieren wir Header, um unseren Bot zu kennzeichnen und rufen die Seite mit read_html ab.
+
+```{r}
+url <- 'https://de.wikipedia.org/wiki/Netzwerk_Recherche'
+
+headers <- c(
+  "User-Agent" = "My User Agent",
+  "From" = "kalange@statistik.tu-dortmund.de"
+)
+page <- read_html(GET(url, add_headers(.headers = headers)))
+```
+
+Nun können wir das Element "table.infobox" suchen und darin alle "tr" Elemente, also alle Zeilen, ausgeben.
+
+```{r pressure, echo=FALSE}
+infobox <- page %>% html_node("table.infobox")
+rows <- infobox %>% html_nodes("tr")
+```
+
+Zuletzt iterieren wir über jede Zeile und extrahieren den Titel ("th") und den Inhalt jedes Eintrags ("td").
+
+```{r}
+for (row in rows) {
+  header <- row %>% html_node("th") %>% html_text(trim = TRUE)
+  data <- row %>% html_node("td") %>% html_text(trim = TRUE)
+
+  if (!is.na(header) && !is.na(data)) {
+    cat(header, ":", data, "\n")
+  }
+}

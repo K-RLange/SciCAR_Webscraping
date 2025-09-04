@@ -1,0 +1,39 @@
+---
+title: "Beispiel"
+output: html_document
+date: "2025-09-05"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(rvest)
+library(dplyr)
+library(stringr)
+```
+
+Zuerst definieren wir Header, um unseren Bot zu kennzeichnen.
+
+```{r}
+url <- 'https://de.wikipedia.org/wiki/Liste_der_Mitglieder_des_1._Ernannten_Landtages_Nordrhein-Westfalen'
+headers <- c(
+  "User-Agent" = "My User Agent",
+  "From" = "kalange@statistik.tu-dortmund.de"
+)
+```
+
+Wir können read_html benutzen, um die HTML zu parsen. Mit dem "html_node" Befehl können wir gezielt nach HTML-Elementen suchen. Hier suchen wir nach dem Element "h1#firstHeading", also der ersten Überschrift, und geben ihren Text aus.
+
+```{r}
+page <- read_html(httr::GET(url, httr::add_headers(.headers = headers)))
+
+title <- page %>% html_node("h1#firstHeading") %>% html_text()
+cat("Titel:", title, "\n")
+```
+
+Anschließend können wir das Element "table.wikitable" suchen un einfach mittels der Funktion html_table in eine R-Tabelle umwandeln.
+
+```{r}
+abgeordnete_table <- page %>% html_node("table.wikitable") %>% html_table(fill = TRUE)
+
+head(abgeordnete_table)
+```
