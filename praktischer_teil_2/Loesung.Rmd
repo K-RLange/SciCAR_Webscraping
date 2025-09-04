@@ -1,0 +1,52 @@
+---
+title: "Scraping mit RSelenium"
+output: html_document
+date: "2025-09-05"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(RSelenium)
+library(dplyr)
+```
+
+Zunächst starten wir Selenium und öffnen unsere Website.
+
+```{r}
+rD <- rsDriver(browser = "firefox", chromever = NULL, phantomver = NULL)
+remDr <- rD[["client"]]
+```
+
+Anschließend warten wir, bis alle Zitate auf der Seite geladen sind und speichern diese in einer Liste. Über diese Liste iterieren wir dann und extrahieren den Text und den Autor jedes Zitats. Danach klicken wir auf den "Next"-Button, um zur nächsten Seite zu gelangen. Dies wiederholen wir, bis kein "Next"-Button mehr vorhanden ist.
+
+```{r}
+all_quotes <- data.frame(text = character(), author = character(), stringsAsFactors = FALSE)
+repeat {
+  Sys.sleep(2)
+
+  quotes <- remDr$findElements(using = "class name", "quote")
+
+  for (q in quotes) {
+    text <- q$findElement(using = "class name", "text")$getElementText()[[1]]
+    author <- q$findElement(using = "class name", "author")$getElementText()[[1]]
+    all_quotes <- bind_rows(all_quotes, data.frame(text = text, author = author))
+  }
+
+  next_btn <- remDr$findElements(using = "css selector", "li.next > a")
+
+  if (length(next_btn) == 0) {
+    break
+  } else {
+    next_btn[[1]]$clickElement()
+  }
+}
+
+```
+
+Zuletzt geben wir alle Zitate aus und schließen den Browser.
+
+```{r}
+print(all_quotes)
+remDr$close()
+rD$server$stop()
+```

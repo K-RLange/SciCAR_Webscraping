@@ -1,0 +1,67 @@
+---
+title: "Beispiel"
+output: html_document
+date: "2025-09-05"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(RSelenium)
+library(httr)
+```
+
+Zunächst starten wir Selenium und öffnen unsere Website.
+
+```{r cars}
+wp= 7
+rD <- rsDriver(browser = "firefox", chromever = NULL, phantomver = NULL)
+remDr <- rD$client
+```
+
+Jetzt wird es etwas kompliziert: Um alle Plenarsprotokolle der siebten und achten Wahlperiode zu scrapen, müssen wir mehrere Elemente finden und anklicken: Den Button, der ein Dropdownmenü für die Auswahl der Legislaturperiode öffnet und die entsprechende Legislaturperiode. Dafür verwenden wir remDr\$findElement, um die Elemente anhand ihrer Klasse oder ID zu finden und remDr\$executeScript, um zu scrollen, wenn wir müssen.
+
+Dann müssen wir die Dokumentennummer einfügen, die wir scrapen wollen, und den Button zum Suchen des Dokuments drücken. Schließlich müssen wir auf das Suchergebnis klicken, um zum PDF zu gelangen. Das Ganze packen wir in zwei Schleifen: Eine für die Wahlperiode (7 und 8) und eine für die Dokumentennummer (1 bis 5). Am Ende speichern wir das PDF mit der Wahlperiode und der Dokumentennummer als Dateinamen.
+
+```{r}
+for (doc_number in 1:3) {
+
+  remDr$navigate("https://parldok.thueringer-landtag.de/ParlDok/dokumentennummer")
+  Sys.sleep(1)
+
+  drop_down <- remDr$findElement("id", "LegislaturperiodenList-button")
+  drop_down$clickElement()
+
+  menu_items <- remDr$findElements("class name", "ui-menu-item")
+  menu_items[[8 - wp + 1]]$clickElement()
+
+  remDr$executeScript("window.scrollBy(0, 500);")
+
+  radios <- remDr$findElements("class name", "form-check-label")
+  radios[[3]]$clickElement()
+
+  remDr$executeScript("window.scrollBy(0, -500);")
+
+  element <- remDr$findElement("class name", "btn-primary")
+  remDr$executeScript("arguments[0].scrollIntoView(true);", list(element))
+
+  doc_field <- remDr$findElement("id", "DokumentenNummer")
+  doc_field$clearElement()
+  doc_field$sendKeysToElement(list(as.character(doc_number)))
+
+  element$clickElement()
+  Sys.sleep(0.5)
+
+  success <- tryCatch({
+    link <- remDr$findElement("class name", "col-12")
+    link$clickElement()
+    Sys.sleep(2)
+
+    current_url <- remDr$getCurrentUrl()[[1]]
+    pdf <- GET(current_url)
+    writeBin(content(pdf, "raw"), sprintf("%s_%s.pdf", wp, doc_number))
+    TRUE
+  }, error = function(e) FALSE)
+
+  if (!success) break
+}
+```
